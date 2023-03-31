@@ -1,9 +1,9 @@
 name: Trigger Live Preview
 on:
   push:
-    branches: [ main ]
+    branches: [ next ]
   pull_request:
-    branches: [ main ]
+    branches: [ next ]
 
 jobs:
   Deploy-to-preview:
