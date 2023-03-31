@@ -15,4 +15,4 @@ jobs:
         uses: thollander/actions-comment-pull-request@v2
         with:
           message: |
-            this should be a comment
+            Preview this commit at http://ec2-18-116-89-147.us-east-2.compute.amazonaws.com/
