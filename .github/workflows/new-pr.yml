@@ -1,0 +1,19 @@
+name: Create Random PR
+  2 on: workflow_dispatch
+  3 jobs:
+  4   create-pr:
+  5     runs-on: ubuntu-latest
+  6     steps:
+  7       - uses: actions/checkout@v3
+  8       - name: Create a new file
+  9         run: |
+ 10           echo "new file content" > new-file.txt
+ 11       - name: Create Pull Request
+ 12         uses: peter-evans/create-pull-request@v4
+ 13         with:
+ 14             token: ${{ secrets.PAT }}
+ 15             commit-message: commit message
+ 16             title: random file
+ 17             body: |
+ 18               yea
+ 19             branch: your-fav-branch
