@@ -6,13 +6,42 @@ on:
     branches: [ next ]
 
 jobs:
-  Deploy-to-preview:
-    permissions: write-all
-    name: Deploy to preview
-    runs-on: ubuntu-latest
-    steps:
-      - name: Comment PR
-        uses: thollander/actions-comment-pull-request@v2
-        with:
-          message: |
-            Preview this commit at http://ec2-18-116-89-147.us-east-2.compute.amazonaws.com/
+  Preview-Deployment:
+      permissions: write-all
+      name: Build Preview Image
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+        - name: Build Preview Image
+          run: |
+            echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+            docker build . -t ${{ secrets.DOCKERHUB_USERNAME }}/storybook-preview:${{ github.sha }}
+            docker image ls
+            docker push ${{ secrets.DOCKERHUB_USERNAME }}/storybook-preview:${{ github.sha }}
+            
+        # stop all active containers
+        # remove all containers (ec2 free-tier 8gb limit)
+        # remove all images
+        # "docker run" will pull the image first
+        # ec2 has port-forwarding rules so that the ec2's public's IP address will route to http default port
+        # finally run in detached mode so that pipeline won't stall once the webserver is up
+
+        - name: Deploy Preview Image
+          run: |
+            echo "${{ secrets.AWS_KEY }}" > my_key.pem
+            chmod 400 my_key.pem
+            ssh -o StrictHostKeyChecking=no -T -i "my_key.pem" ec2-user@ec2-18-116-89-147.us-east-2.compute.amazonaws.com '
+              echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+              if [ "$(docker ps -a -q)" ]; then docker stop $(docker ps -a -q); fi
+              if [ "$(docker ps -a -q)" ]; then docker rm $(docker ps -a -q); fi
+              if [ "$(docker images -a -q)" ]; then docker rmi $(docker images -a -q); fi
+              docker run -d -p 80:6006 ${{ secrets.DOCKERHUB_USERNAME }}/storybook-preview:${{ github.sha }}
+              echo "complete!"
+            '
+        - name: Comment PR
+          uses: thollander/actions-comment-pull-request@v2
+          with:
+            message: |
+              Preview this commit at http://ec2-18-116-89-147.us-east-2.compute.amazonaws.com/
+
+
